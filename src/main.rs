@@ -1,8 +1,57 @@
 mod bluetooth;
 
-use bluetooth::{Device, BtDevice};
+use axum::{routing::{get, post}, Router, Json};
+use axum::response::Html;
+use serde::{Deserialize, Serialize};
 
-fn main() {
-    let device = Device::new();
-    dbg!(device.disconnect());
+
+#[derive(Serialize, Deserialize)]
+struct BluetoothStatus {
+    status: String, // "on" 或 "off"
+}
+
+#[derive(Deserialize)]
+struct ControlRequest {
+    action: String, // "toggle" 或其他操作
+}
+
+async fn get_bluetooth_status() -> Json<BluetoothStatus> {
+    // TODO: 实际调用系统API获取蓝牙状态
+    // let status = get_system_bluetooth_status().await;
+    let status = String::from("on"); // 假设当前状态为 "on"
+    Json(BluetoothStatus { status })
+}
+
+async fn control_bluetooth(Json(payload): Json<ControlRequest>) -> Json<BluetoothStatus> {
+    if payload.action == "toggle" {
+        // TODO: 实际调用系统API切换蓝牙状态
+        dbg!("Toggling Bluetooth status");
+    }
+    
+    // 获取更新后的状态
+    // let status = get_system_bluetooth_status().await;
+    let status = String::from("off"); // TODO: 假设切换后状态为 "on"
+    dbg!("Updated Bluetooth status: {}", &status);
+
+    Json(BluetoothStatus { status })
+}
+
+#[tokio::main]
+async fn main() {
+    let app = Router::new()
+        .route("/", get(root_handler))
+        .route("/api/bluetooth/status", get(get_bluetooth_status))
+        .route("/api/bluetooth/control", post(control_bluetooth));
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:500")
+        .await
+        .unwrap();
+
+    axum::serve(listener, app)
+        .await
+        .unwrap();
+}
+
+async fn root_handler() -> Html<&'static str> {
+    Html(include_str!("../assets/index.html"))
 }

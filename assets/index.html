@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>dbm: Don't Bother Me</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: #0f2027; /* 深蓝黑色背景 */
+            background: linear-gradient(120deg, #2c5364, #203a43, #0f2027);
+            color: white;
+            padding: 20px;
+            transition: background 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        
+        .header {
+            text-align: center;
+            padding: 20px 0;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 3rem;
+            letter-spacing: 5px;
+            text-shadow: 0 0 12px rgba(100, 200, 255, 0.8);
+            animation: glow 3s infinite alternate;
+            background: linear-gradient(120deg, #8ee4ff, #a7c0fd);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .status-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 30px 0;
+        }
+        
+        .status-wrapper {
+            position: relative;
+            width: 260px;
+            height: 260px;
+            margin-bottom: 40px;
+        }
+        
+        .status-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.07);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            z-index: 1;
+            transition: all 0.8s;
+        }
+        
+        .status-icon {
+            position: relative;
+            width: 220px;
+            height: 220px;
+            background: linear-gradient(145deg, #1e2a78, #152061);
+            border-radius: 25%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px;
+            transition: all 0.8s;
+            z-index: 2;
+            box-shadow: 
+                0 10px 15px rgba(0, 0, 0, 0.3),
+                inset 0 -5px 10px rgba(0, 0, 0, 0.2),
+                inset 0 5px 10px rgba(255, 255, 255, 0.1);
+        }
+        
+        .status-icon.active {
+            background: linear-gradient(145deg, #0a4b75, #063c5e);
+            transform: rotate(360deg);
+        }
+        
+        .status-icon i {
+            font-size: 7.5rem;
+            color: #5a9ed9;
+            text-shadow: 0 0 25px rgba(90, 158, 217, 0.8);
+            transition: all 0.5s;
+        }
+        
+        .status-icon.active i {
+            color: #8ee4ff;
+            text-shadow: 0 0 30px rgba(142, 228, 255, 0.9);
+            animation: pulse-blue 2s infinite;
+        }
+        
+        /* X关闭符号样式 - 模仿图片效果 */
+        .x-overlay {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: none;
+        }
+        
+        .x-line {
+            position: absolute;
+            background: linear-gradient(to bottom, #ff6b6b, #ff3636);
+            width: 28px;
+            height: 200px;
+            top: 10px;
+            border-radius: 14px;
+            box-shadow: 0 0 12px rgba(255, 80, 80, 0.7);
+        }
+        
+        .x-line:first-child {
+            left: calc(50% - 14px);
+            transform: rotate(45deg);
+        }
+        
+        .x-line:last-child {
+            right: calc(50% - 14px);
+            transform: rotate(-45deg);
+        }
+        
+        /* 控制按钮样式 */
+        .control-button {
+            background: linear-gradient(to right, #4da6ff, #3385ff);
+            color: white;
+            border: none;
+            padding: 16px 60px;
+            font-size: 1.6rem;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 10px 0;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.4s;
+            font-weight: bold;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 2px;
+            z-index: 3;
+        }
+        
+        .control-button:after {
+            content: '';
+            position: absolute;
+            top: -100%;
+            left: -200%;
+            width: 400%;
+            height: 400%;
+            background: linear-gradient(45deg, transparent 33%, rgba(255,255,255,0.2) 50%, transparent 67%);
+            z-index: 1;
+            transform: translateX(0);
+            transition: transform 0.8s;
+        }
+        
+        .control-button:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 25px rgba(0, 0, 0, 0.4);
+            background: linear-gradient(to right, #66b3ff, #4d94ff);
+        }
+        
+        .control-button:hover:after {
+            transform: translateX(100%);
+        }
+        
+        .control-button:active {
+            transform: translateY(2px);
+        }
+        
+        .control-button:disabled {
+            background: linear-gradient(to right, #6c757d, #5a6268);
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .github-link {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-top: 40px;
+            padding: 10px 0;
+        }
+        
+        .github-link a {
+            display: flex;
+            align-items: center;
+            color: rgba(255, 255, 255, 0.7);
+            text-decoration: none;
+            font-size: 1.2rem;
+            transition: all 0.3s;
+            padding: 8px 20px;
+            border-radius: 50px;
+            background: rgba(0, 0, 0, 0.2);
+        }
+        
+        .github-link a:hover {
+            color: white;
+            background: rgba(0, 0, 0, 0.3);
+            transform: scale(1.05);
+        }
+        
+        .github-link i {
+            font-size: 2.2rem;
+            margin-right: 12px;
+        }
+        
+        /* 动画效果 */
+        @keyframes glow {
+            0% { text-shadow: 0 0 10px rgba(100, 200, 255, 0.8); }
+            50% { text-shadow: 0 0 20px rgba(100, 200, 255, 1), 0 0 30px rgba(100, 200, 255, 0.9); }
+            100% { text-shadow: 0 0 10px rgba(100, 200, 255, 0.8); }
+        }
+        
+        @keyframes pulse-blue {
+            0% { 
+                transform: scale(1);
+                opacity: 0.8;
+            }
+            50% { 
+                transform: scale(1.1);
+                opacity: 1;
+            }
+            100% { 
+                transform: scale(1);
+                opacity: 0.8;
+            }
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 2.5rem;
+            }
+            
+            .status-wrapper {
+                width: 220px;
+                height: 220px;
+            }
+            
+            .status-icon {
+                width: 180px;
+                height: 180px;
+            }
+            
+            .status-icon i {
+                font-size: 6rem;
+            }
+            
+            .x-line {
+                width: 22px;
+                height: 170px;
+            }
+            
+            .control-button {
+                padding: 14px 50px;
+                font-size: 1.4rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .header h1 {
+                font-size: 2rem;
+            }
+            
+            .status-wrapper {
+                width: 200px;
+                height: 200px;
+            }
+            
+            .status-icon {
+                width: 160px;
+                height: 160px;
+            }
+            
+            .status-icon i {
+                font-size: 5rem;
+            }
+            
+            .x-line {
+                width: 20px;
+                height: 150px;
+            }
+            
+            .control-button {
+                padding: 12px 40px;
+                font-size: 1.3rem;
+            }
+            
+            .github-link a {
+                font-size: 1rem;
+            }
+            
+            .github-link i {
+                font-size: 1.8rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header class="header">
+        <h1>DBM</h1>
+    </header>
+    
+    <main class="status-container">
+        <div class="status-wrapper">
+            <div class="status-backdrop"></div>
+            <div class="status-icon" id="statusIcon">
+                <i class="fab fa-bluetooth-b"></i>
+                <div class="x-overlay" id="xOverlay">
+                    <div class="x-line"></div>
+                    <div class="x-line"></div>
+                </div>
+            </div>
+        </div>
+        
+        <button class="control-button" id="controlButton">开启蓝牙</button>
+    </main>
+    
+    <footer class="github-link">
+        <a href="https://github.com/SandmeyerX/dbm" target="_blank">
+            <i class="fab fa-github"></i>
+            <span>github.com/SandmeyerX/dbm</span>
+        </a>
+    </footer>
+
+    <script>
+        // 状态控制元素
+        const statusIcon = document.getElementById('statusIcon');
+        const xOverlay = document.getElementById('xOverlay');
+        const controlButton = document.getElementById('controlButton');
+        
+        // API端点
+        const STATUS_API = '/api/bluetooth/status';
+        const CONTROL_API = '/api/bluetooth/control';
+
+        // 初始化状态
+        fetchBluetoothStatus();
+        
+        // 按钮点击事件
+        controlButton.addEventListener('click', toggleBluetooth);
+        
+        // 获取蓝牙状态
+        async function fetchBluetoothStatus() {
+            try {
+                controlButton.disabled = true;
+                const response = await fetch(STATUS_API);
+                if (!response.ok) {
+                    throw new Error(`HTTP错误! 状态: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                updateUI(data.status === "on");
+            } catch (error) {
+                console.error('获取蓝牙状态失败:', error);
+                // 默认显示关闭状态
+                updateUI(false);
+            } finally {
+                controlButton.disabled = false;
+            }
+        }
+        
+        // 切换蓝牙状态
+        async function toggleBluetooth() {
+            try {
+                controlButton.disabled = true;
+                
+                const response = await fetch(CONTROL_API, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        action: 'toggle'
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP错误! 状态: ${response.status}`);
+                }
+                
+                const data = await response.json();
+                updateUI(data.status === "on");
+            } catch (error) {
+                console.error('切换蓝牙状态失败:', error);
+            } finally {
+                controlButton.disabled = false;
+            }
+        }
+        
+        // 更新UI显示
+        function updateUI(isBluetoothOn) {
+            if (isBluetoothOn) {
+                // 蓝牙开启状态 - 蓝色主题
+                statusIcon.classList.add('active');
+                xOverlay.style.display = 'none';
+                controlButton.textContent = '关闭蓝牙';
+                document.body.style.background = 'linear-gradient(120deg, #2c3e50, #3498db)';
+            } else {
+                // 蓝牙关闭状态 - 红色主题
+                statusIcon.classList.remove('active');
+                xOverlay.style.display = 'block';
+                controlButton.textContent = '开启蓝牙';
+                document.body.style.background = 'linear-gradient(120deg, #2c3e50, #c31432)';
+            }
+        }
+    </script>
+</body>
+</html>
