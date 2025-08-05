@@ -5,32 +5,49 @@ use axum::response::Html;
 use serde::{Deserialize, Serialize};
 
 
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum BluetoothState {
+    On,
+    Off,
+}
+
 #[derive(Serialize, Deserialize)]
 struct BluetoothStatus {
-    status: String, // "on" 或 "off"
+    status: BluetoothState, 
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(rename_all = "lowercase")]
+enum RequestAction {
+    Toggle,
 }
 
 #[derive(Deserialize)]
 struct ControlRequest {
-    action: String, // "toggle" 或其他操作
+    action: RequestAction, 
 }
 
 async fn get_bluetooth_status() -> Json<BluetoothStatus> {
     // TODO: 实际调用系统API获取蓝牙状态
     // let status = get_system_bluetooth_status().await;
-    let status = String::from("on"); // 假设当前状态为 "on"
+    let status = BluetoothState::On; // 假设当前状态为 "on"
     Json(BluetoothStatus { status })
 }
 
 async fn control_bluetooth(Json(payload): Json<ControlRequest>) -> Json<BluetoothStatus> {
-    if payload.action == "toggle" {
-        // TODO: 实际调用系统API切换蓝牙状态
-        dbg!("Toggling Bluetooth status");
+    match payload.action {
+        RequestAction::Toggle => {
+            // TODO: 实际调用系统API切换蓝牙状态
+            dbg!("Toggling Bluetooth status");
+        },
+        
     }
     
     // 获取更新后的状态
     // let status = get_system_bluetooth_status().await;
-    let status = String::from("off"); // TODO: 假设切换后状态为 "on"
+    let status = BluetoothState::Off; // TODO: 假设切换后状态为 "off"
     dbg!("Updated Bluetooth status: {}", &status);
 
     Json(BluetoothStatus { status })
